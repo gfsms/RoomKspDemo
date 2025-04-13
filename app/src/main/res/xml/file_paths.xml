@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Proporciona acceso a los archivos externos de la aplicación -->
+    <external-files-path
+        name="external_files"
+        path="." />
+    <!-- Proporciona acceso específico al directorio de documentos -->
+    <external-files-path
+        name="documents"
+        path="Documents/" />
+</paths>
