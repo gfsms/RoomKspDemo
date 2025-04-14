@@ -43,9 +43,11 @@ class CreateInspectionActivity : AppCompatActivity() {
         val application = application as CAEXInspectionApp
         inspeccionViewModel = ViewModelProvider(
             this,
-            InspeccionViewModel.InspeccionViewModelFactory(application.inspeccionRepository)
+            InspeccionViewModel.InspeccionViewModelFactory(
+                application.inspeccionRepository,
+                application.caexRepository  // Aseguramos pasar el CAEXRepository
+            )
         )[InspeccionViewModel::class.java]
-
         // Configurar fecha y hora actual (no editable)
         actualizarFechaHora()
 
@@ -150,6 +152,10 @@ class CreateInspectionActivity : AppCompatActivity() {
             return
         }
 
+        // Mostrar indicador de carga
+        binding.startInspectionButton.isEnabled = false
+        binding.startInspectionButton.text = "Creando inspección..."
+
         // Obtener valores de los campos
         val caexId = binding.caexIdEditText.text.toString().toInt()
         val nombreInspector = binding.inspectorNameEditText.text.toString()
@@ -186,6 +192,10 @@ class CreateInspectionActivity : AppCompatActivity() {
      */
     private fun observarEstadoOperaciones() {
         inspeccionViewModel.operationStatus.observe(this) { status ->
+            // Restaurar el botón
+            binding.startInspectionButton.isEnabled = true
+            binding.startInspectionButton.text = "Iniciar Inspección"
+
             when (status) {
                 is InspeccionViewModel.OperationStatus.Success -> {
                     // Inspección creada exitosamente, navegar a la pantalla de inspección

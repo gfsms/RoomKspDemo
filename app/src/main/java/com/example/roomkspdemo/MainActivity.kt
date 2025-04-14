@@ -1,5 +1,6 @@
 package com.example.roomkspdemo
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
@@ -77,7 +78,10 @@ class MainActivity : AppCompatActivity() {
         // Initialize Inspección ViewModel
         inspeccionViewModel = ViewModelProvider(
             this,
-            InspeccionViewModel.InspeccionViewModelFactory(application.inspeccionRepository)
+            InspeccionViewModel.InspeccionViewModelFactory(
+                application.inspeccionRepository,
+                application.caexRepository
+            )
         )[InspeccionViewModel::class.java]
     }
 
@@ -158,11 +162,12 @@ class MainActivity : AppCompatActivity() {
 
     /**
      * Shows dialog to create a new inspection.
-     * Currently just shows a placeholder message.
+     * Launches the CreateInspectionActivity.
      */
     private fun showCreateInspectionDialog() {
-        Toast.makeText(this, "Funcionalidad para crear inspección en desarrollo", Toast.LENGTH_SHORT).show()
-        // TODO: Implement dialog to create new inspection
+        // Launch the CreateInspectionActivity
+        val intent = Intent(this, com.example.roomkspdemo.ui.inspection.CreateInspectionActivity::class.java)
+        startActivity(intent)
     }
 
     /**

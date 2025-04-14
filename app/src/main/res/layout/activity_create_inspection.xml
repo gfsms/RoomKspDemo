@@ -147,7 +147,16 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:hint="Fecha y Hora">
-
+                        <!-- Se registrará automáticamente la fecha y hora de creación -->
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="La fecha y hora se registrarán automáticamente"
+                            android:textSize="12sp"
+                            android:textColor="@android:color/darker_gray"
+                            android:gravity="center"
+                            android:layout_marginTop="8dp"
+                            android:layout_marginBottom="8dp" />
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/dateTimeEditText"
                             android:layout_width="match_parent"

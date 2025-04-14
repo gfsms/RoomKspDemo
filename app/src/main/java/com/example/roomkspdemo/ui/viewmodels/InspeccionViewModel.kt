@@ -22,7 +22,7 @@ import kotlinx.coroutines.launch
  */
 class InspeccionViewModel(
     private val inspeccionRepository: InspeccionRepository,
-    private val caexRepository: CAEXRepository
+    private val caexRepository: CAEXRepository? = null
 ) : ViewModel() {
 
     // LiveData para notificar eventos de operaciones
@@ -56,6 +56,11 @@ class InspeccionViewModel(
         nombreSupervisor: String
     ) = viewModelScope.launch {
         try {
+            if (caexRepository == null) {
+                _operationStatus.value = OperationStatus.Error("No se puede realizar esta operación sin el CAEXRepository")
+                return@launch
+            }
+
             // Buscar el CAEX por número identificador
             var caex = caexRepository.getCAEXByNumeroIdentificador(numeroIdentificador)
 
@@ -266,12 +271,7 @@ class InspeccionViewModel(
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             if (modelClass.isAssignableFrom(InspeccionViewModel::class.java)) {
                 @Suppress("UNCHECKED_CAST")
-                return if (caexRepository != null) {
-                    InspeccionViewModel(inspeccionRepository, caexRepository) as T
-                } else {
-                    val app = (caexRepository as? CAEXRepository)?.javaClass?.name ?: "unknown"
-                    throw IllegalArgumentException("CAEXRepository is required for InspeccionViewModel but was null")
-                }
+                return InspeccionViewModel(inspeccionRepository, caexRepository) as T
             }
             throw IllegalArgumentException("Unknown ViewModel class")
         }

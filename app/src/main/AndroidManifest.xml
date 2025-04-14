@@ -39,6 +39,19 @@
             </intent-filter>
         </activity>
 
+        <!-- Actividades de inspección -->
+        <activity
+            android:name=".ui.inspection.CreateInspectionActivity"
+            android:exported="false"
+            android:label="Nueva Inspección"
+            android:parentActivityName=".MainActivity" />
+
+        <activity
+            android:name=".ui.inspection.InspectionQuestionnaireActivity"
+            android:exported="false"
+            android:label="Cuestionario de Inspección"
+            android:parentActivityName=".ui.inspection.CreateInspectionActivity" />
+
         <!-- FileProvider para compartir archivos -->
         <provider
             android:name="androidx.core.content.FileProvider"

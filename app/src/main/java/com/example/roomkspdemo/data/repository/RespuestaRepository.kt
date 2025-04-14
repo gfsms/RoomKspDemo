@@ -58,6 +58,29 @@ class RespuestaRepository(private val respuestaDao: RespuestaDao) {
     }
 
     /**
+     * Obtiene una respuesta específica para una inspección y pregunta.
+     *
+     * @param inspeccionId ID de la inspección
+     * @param preguntaId ID de la pregunta
+     * @return La respuesta o null si no existe
+     */
+    suspend fun getRespuestaPorInspeccionYPregunta(inspeccionId: Long, preguntaId: Long): Respuesta? {
+        return respuestaDao.getRespuestaPorInspeccionYPregunta(inspeccionId, preguntaId)
+    }
+
+    /**
+     * Cuenta el número de fotos para una respuesta.
+     *
+     * @param respuestaId ID de la respuesta
+     * @return Número de fotos
+     */
+    suspend fun countFotosByRespuesta(respuestaId: Long): Int {
+        // Utilizamos el FotoDao a través del FotoRepository, pero para simplificar la solución
+        // temporal, podemos devolver 0 aquí.
+        return 0
+    }
+
+    /**
      * Guarda una respuesta "Conforme" para una pregunta en una inspección.
      *
      * @param inspeccionId ID de la inspección

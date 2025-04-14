@@ -81,8 +81,7 @@ class InspectionQuestionnaireActivity : AppCompatActivity() {
         inspeccionViewModel = ViewModelProvider(
             this,
             InspeccionViewModel.InspeccionViewModelFactory(
-                application.inspeccionRepository,
-                application.caexRepository
+                application.inspeccionRepository
             )
         )[InspeccionViewModel::class.java]
 
@@ -102,6 +101,13 @@ class InspectionQuestionnaireActivity : AppCompatActivity() {
                 application.respuestaRepository
             )
         )[RespuestaViewModel::class.java]
+    }
+
+    /**
+     * Método para que los fragmentos puedan obtener el ViewModel de respuestas.
+     */
+    fun getRespuestaViewModel(): RespuestaViewModel {
+        return respuestaViewModel
     }
 
     /**
@@ -294,6 +300,22 @@ class InspectionQuestionnaireActivity : AppCompatActivity() {
     }
 
     /**
+     * Implementa la toma de fotografías.
+     */
+    fun tomarFotografia(respuestaId: Long) {
+        // TODO: Implementar la toma de fotografías usando la cámara
+        Toast.makeText(this, "Funcionalidad de cámara en desarrollo", Toast.LENGTH_SHORT).show()
+    }
+
+    /**
+     * Implementa la visualización de fotografías.
+     */
+    fun verFotografias(respuestaId: Long) {
+        // TODO: Implementar la visualización de fotografías
+        Toast.makeText(this, "Funcionalidad de galería en desarrollo", Toast.LENGTH_SHORT).show()
+    }
+
+    /**
      * Crea el menú de opciones.
      */
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
@@ -313,6 +335,11 @@ class InspectionQuestionnaireActivity : AppCompatActivity() {
             R.id.action_save -> {
                 // Guardar el estado actual de la inspección
                 Toast.makeText(this, "Inspección guardada", Toast.LENGTH_SHORT).show()
+                true
+            }
+            R.id.action_export_pdf -> {
+                // Exportar la inspección a PDF
+                Toast.makeText(this, "Exportación a PDF en desarrollo", Toast.LENGTH_SHORT).show()
                 true
             }
             else -> super.onOptionsItemSelected(item)

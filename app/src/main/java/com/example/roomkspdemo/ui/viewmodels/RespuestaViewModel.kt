@@ -72,20 +72,49 @@ class RespuestaViewModel(private val repository: RespuestaRepository) : ViewMode
     }
 
     /**
+     * Obtiene una respuesta específica para una inspección y pregunta.
+     *
+     * @param inspeccionId ID de la inspección
+     * @param preguntaId ID de la pregunta
+     * @return La respuesta o null si no existe
+     */
+    suspend fun getRespuestaPorInspeccionYPregunta(inspeccionId: Long, preguntaId: Long): Respuesta? {
+        try {
+            return repository.getRespuestaPorInspeccionYPregunta(inspeccionId, preguntaId)
+        } catch (e: Exception) {
+            _operationStatus.postValue(OperationStatus.Error(e.message ?: "Error al obtener respuesta"))
+            return null
+        }
+    }
+
+    /**
+     * Cuenta el número de fotos para una respuesta.
+     *
+     * @param respuestaId ID de la respuesta
+     * @return El número de fotos
+     */
+    suspend fun countFotosByRespuesta(respuestaId: Long): Int {
+        try {
+            return repository.countFotosByRespuesta(respuestaId)
+        } catch (e: Exception) {
+            _operationStatus.postValue(OperationStatus.Error(e.message ?: "Error al contar fotos"))
+            return 0
+        }
+    }
+
+    /**
      * Guarda una respuesta "Conforme" para una pregunta en una inspección.
      *
      * @param inspeccionId ID de la inspección
      * @param preguntaId ID de la pregunta
+     * @return ID de la respuesta guardada
      */
-    fun guardarRespuestaConforme(inspeccionId: Long, preguntaId: Long) = viewModelScope.launch {
+    suspend fun guardarRespuestaConforme(inspeccionId: Long, preguntaId: Long): Long {
         try {
-            val respuestaId = repository.guardarRespuestaConforme(inspeccionId, preguntaId)
-            _operationStatus.value = OperationStatus.Success(
-                "Respuesta guardada correctamente",
-                respuestaId
-            )
+            return repository.guardarRespuestaConforme(inspeccionId, preguntaId)
         } catch (e: Exception) {
-            _operationStatus.value = OperationStatus.Error(e.message ?: "Error desconocido")
+            _operationStatus.postValue(OperationStatus.Error(e.message ?: "Error al guardar respuesta conforme"))
+            return 0
         }
     }
 
@@ -97,28 +126,26 @@ class RespuestaViewModel(private val repository: RespuestaRepository) : ViewMode
      * @param comentarios Comentarios explicativos sobre el problema
      * @param tipoAccion Tipo de acción (INMEDIATO o PROGRAMADO)
      * @param idAvisoOrdenTrabajo ID del aviso o la orden de trabajo asociada
+     * @return ID de la respuesta guardada
      */
-    fun guardarRespuestaNoConforme(
+    suspend fun guardarRespuestaNoConforme(
         inspeccionId: Long,
         preguntaId: Long,
         comentarios: String,
         tipoAccion: String,
         idAvisoOrdenTrabajo: String
-    ) = viewModelScope.launch {
+    ): Long {
         try {
-            val respuestaId = repository.guardarRespuestaNoConforme(
+            return repository.guardarRespuestaNoConforme(
                 inspeccionId,
                 preguntaId,
                 comentarios,
                 tipoAccion,
                 idAvisoOrdenTrabajo
             )
-            _operationStatus.value = OperationStatus.Success(
-                "Respuesta guardada correctamente",
-                respuestaId
-            )
         } catch (e: Exception) {
-            _operationStatus.value = OperationStatus.Error(e.message ?: "Error desconocido")
+            _operationStatus.postValue(OperationStatus.Error(e.message ?: "Error al guardar respuesta no conforme"))
+            return 0
         }
     }
 
