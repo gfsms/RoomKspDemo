@@ -163,22 +163,28 @@ class InspeccionViewModel(
      * @param inspeccionId ID de la inspección a cerrar
      * @param comentariosGenerales Comentarios generales sobre la inspección
      */
-    fun cerrarInspeccion(inspeccionId: Long, comentariosGenerales: String = "") = viewModelScope.launch {
-        try {
-            val result = inspeccionRepository.cerrarInspeccion(inspeccionId, comentariosGenerales)
-            if (result) {
-                _operationStatus.value = OperationStatus.Success(
-                    "Inspección cerrada correctamente",
-                    inspeccionId
-                )
-            } else {
-                _operationStatus.value = OperationStatus.Error(
-                    "No se puede cerrar la inspección. Asegúrate de responder todas las preguntas."
-                )
+    fun cerrarInspeccion(inspeccionId: Long, comentariosGenerales: String = ""): LiveData<Boolean> {
+        val result = MutableLiveData<Boolean>()
+        viewModelScope.launch {
+            try {
+                val success = inspeccionRepository.cerrarInspeccion(inspeccionId, comentariosGenerales)
+                result.value = success
+                if (success) {
+                    _operationStatus.value = OperationStatus.Success(
+                        "Inspección cerrada correctamente",
+                        inspeccionId
+                    )
+                } else {
+                    _operationStatus.value = OperationStatus.Error(
+                        "No se puede cerrar la inspección. Asegúrate de responder todas las preguntas."
+                    )
+                }
+            } catch (e: Exception) {
+                result.value = false
+                _operationStatus.value = OperationStatus.Error(e.message ?: "Error desconocido")
             }
-        } catch (e: Exception) {
-            _operationStatus.value = OperationStatus.Error(e.message ?: "Error desconocido")
         }
+        return result
     }
 
     /**

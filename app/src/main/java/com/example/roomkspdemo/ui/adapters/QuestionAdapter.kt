@@ -1,9 +1,11 @@
 package com.example.roomkspdemo.ui.adapters
 
+import android.text.Editable
+import android.text.TextWatcher
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.core.widget.doAfterTextChanged
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
@@ -98,7 +100,8 @@ class QuestionAdapter(
                         tipoAccion = respuesta.tipoAccion ?: "",
                         idAvisoOrdenTrabajo = respuesta.idAvisoOrdenTrabajo ?: "",
                         numFotos = numFotos,
-                        respondida = true
+                        respondida = respuesta.estado == Respuesta.ESTADO_CONFORME ||
+                                (respuesta.estado == Respuesta.ESTADO_NO_CONFORME && respuesta.comentarios.isNotBlank())
                     )
 
                     // Actualizar el mapa de respuestas
@@ -117,6 +120,9 @@ class QuestionAdapter(
         private val binding: ItemQuestionBinding
     ) : RecyclerView.ViewHolder(binding.root) {
 
+        // TextWatcher para el campo de comentarios
+        private var commentTextWatcher: TextWatcher? = null
+
         fun bind(pregunta: Pregunta) {
             // Mostrar texto de la pregunta
             binding.questionTextView.text = pregunta.texto
@@ -129,31 +135,31 @@ class QuestionAdapter(
             // Configurar estado de los radio buttons
             setupRadioButtons(pregunta, respuestaUIState)
 
-            // Configurar campos para No Conforme
-            setupNoConformeFields(pregunta, respuestaUIState)
+            // Configure the comment field if No Conforme
+            setupCommentField(pregunta, respuestaUIState)
 
-            // Configurar conteo de fotos
-            updateFotoCount(respuestaUIState.numFotos)
-
-            // Configurar botones para fotos
-            setupPhotoButtons(pregunta, respuestaUIState)
+            // Hide the fields that will be in the summary screen
+            binding.tipoAccionRadioGroup.visibility = View.GONE
+            val avisoOtLayout = binding.avisoOtEditText.parent as? ViewGroup
+            avisoOtLayout?.visibility = View.GONE
+            binding.takePictureButton.visibility = View.GONE
+            binding.viewPicturesButton.visibility = View.GONE
         }
 
         private fun setupRadioButtons(pregunta: Pregunta, respuestaUIState: RespuestaUIState) {
             // Quitar listener temporalmente para evitar llamadas circulares
             binding.answerRadioGroup.setOnCheckedChangeListener(null)
 
+            // Reset radio button state
+            binding.answerRadioGroup.clearCheck()
+
             // Establecer estado según la respuesta
             when (respuestaUIState.estado) {
                 Respuesta.ESTADO_CONFORME -> binding.conformeRadio.isChecked = true
                 Respuesta.ESTADO_NO_CONFORME -> binding.noConformeRadio.isChecked = true
-                else -> {
-                    binding.conformeRadio.isChecked = false
-                    binding.noConformeRadio.isChecked = false
-                }
             }
 
-            // Mostrar u ocultar área de No Conforme
+            // Show or hide the No Conforme container based on current state
             binding.noConformeContainer.visibility = if (respuestaUIState.estado == Respuesta.ESTADO_NO_CONFORME) {
                 View.VISIBLE
             } else {
@@ -173,18 +179,18 @@ class QuestionAdapter(
                         guardarRespuestaConforme(pregunta.preguntaId)
                     }
                     R.id.noConformeRadio -> {
-                        // Mostrar área No Conforme
+                        // Show No Conforme area for comments
                         respuestaUIState.estado = Respuesta.ESTADO_NO_CONFORME
-                        respuestaUIState.respondida = validateNoConformeFields(respuestaUIState)
                         binding.noConformeContainer.visibility = View.VISIBLE
 
-                        // Si ya tiene datos completos, guardar
-                        if (respuestaUIState.respondida) {
-                            guardarRespuestaNoConforme(
+                        // The question is only considered answered when comments are provided
+                        respuestaUIState.respondida = respuestaUIState.comentarios.isNotBlank()
+
+                        // If comments already exist, save it
+                        if (respuestaUIState.comentarios.isNotBlank()) {
+                            guardarRespuestaNoConformeSimplificada(
                                 pregunta.preguntaId,
-                                respuestaUIState.comentarios,
-                                respuestaUIState.tipoAccion,
-                                respuestaUIState.idAvisoOrdenTrabajo
+                                respuestaUIState.comentarios
                             )
                         }
                     }
@@ -192,115 +198,43 @@ class QuestionAdapter(
             }
         }
 
-        private fun setupNoConformeFields(pregunta: Pregunta, respuestaUIState: RespuestaUIState) {
-            // Configurar comentarios
+        private fun setupCommentField(pregunta: Pregunta, respuestaUIState: RespuestaUIState) {
+            // Remove previous TextWatcher if it exists
+            if (commentTextWatcher != null) {
+                binding.commentEditText.removeTextChangedListener(commentTextWatcher)
+            }
+
+            // Set the current comment text
             binding.commentEditText.setText(respuestaUIState.comentarios)
-            binding.commentEditText.doAfterTextChanged { text ->
-                respuestaUIState.comentarios = text.toString()
-                respuestaUIState.respondida = validateNoConformeFields(respuestaUIState)
 
-                // Si todos los campos están completos, guardar
-                if (respuestaUIState.respondida && respuestaUIState.estado == Respuesta.ESTADO_NO_CONFORME) {
-                    guardarRespuestaNoConforme(
-                        pregunta.preguntaId,
-                        respuestaUIState.comentarios,
-                        respuestaUIState.tipoAccion,
-                        respuestaUIState.idAvisoOrdenTrabajo
-                    )
-                }
-            }
+            // Create new TextWatcher
+            commentTextWatcher = object : TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+                override fun afterTextChanged(s: Editable?) {
+                    val newComment = s.toString()
+                    respuestaUIState.comentarios = newComment
 
-            // Configurar tipo de acción
-            binding.tipoAccionRadioGroup.setOnCheckedChangeListener(null)
-            when (respuestaUIState.tipoAccion) {
-                Respuesta.ACCION_INMEDIATO -> binding.inmediatoRadio.isChecked = true
-                Respuesta.ACCION_PROGRAMADO -> binding.programadoRadio.isChecked = true
-                else -> {
-                    binding.inmediatoRadio.isChecked = false
-                    binding.programadoRadio.isChecked = false
-                }
-            }
+                    // The question is considered answered when comments are provided
+                    val wasAnswered = respuestaUIState.respondida
+                    respuestaUIState.respondida =
+                        respuestaUIState.estado == Respuesta.ESTADO_CONFORME ||
+                                (respuestaUIState.estado == Respuesta.ESTADO_NO_CONFORME && newComment.isNotBlank())
 
-            binding.tipoAccionRadioGroup.setOnCheckedChangeListener { _, checkedId ->
-                when (checkedId) {
-                    R.id.inmediatoRadio -> {
-                        respuestaUIState.tipoAccion = Respuesta.ACCION_INMEDIATO
+                    // Save to database when comment is entered
+                    if (respuestaUIState.estado == Respuesta.ESTADO_NO_CONFORME && newComment.isNotBlank()) {
+                        guardarRespuestaNoConformeSimplificada(pregunta.preguntaId, newComment)
                     }
-                    R.id.programadoRadio -> {
-                        respuestaUIState.tipoAccion = Respuesta.ACCION_PROGRAMADO
-                    }
-                }
 
-                respuestaUIState.respondida = validateNoConformeFields(respuestaUIState)
-
-                // Si todos los campos están completos, guardar
-                if (respuestaUIState.respondida && respuestaUIState.estado == Respuesta.ESTADO_NO_CONFORME) {
-                    guardarRespuestaNoConforme(
-                        pregunta.preguntaId,
-                        respuestaUIState.comentarios,
-                        respuestaUIState.tipoAccion,
-                        respuestaUIState.idAvisoOrdenTrabajo
-                    )
-                }
-            }
-
-            // Configurar ID de aviso/OT
-            binding.avisoOtEditText.setText(respuestaUIState.idAvisoOrdenTrabajo)
-            binding.avisoOtEditText.doAfterTextChanged { text ->
-                respuestaUIState.idAvisoOrdenTrabajo = text.toString()
-                respuestaUIState.respondida = validateNoConformeFields(respuestaUIState)
-
-                // Si todos los campos están completos, guardar
-                if (respuestaUIState.respondida && respuestaUIState.estado == Respuesta.ESTADO_NO_CONFORME) {
-                    guardarRespuestaNoConforme(
-                        pregunta.preguntaId,
-                        respuestaUIState.comentarios,
-                        respuestaUIState.tipoAccion,
-                        respuestaUIState.idAvisoOrdenTrabajo
-                    )
-                }
-            }
-        }
-
-        private fun validateNoConformeFields(state: RespuestaUIState): Boolean {
-            // Para que una respuesta NO_CONFORME sea válida, todos los campos deben estar completos
-            return state.comentarios.isNotBlank() &&
-                    state.tipoAccion.isNotBlank() &&
-                    state.idAvisoOrdenTrabajo.isNotBlank()
-        }
-
-        private fun updateFotoCount(count: Int) {
-            binding.viewPicturesButton.text = "Ver Fotos ($count)"
-            binding.viewPicturesButton.isEnabled = count > 0
-        }
-
-        private fun setupPhotoButtons(pregunta: Pregunta, respuestaUIState: RespuestaUIState) {
-            // Botón para tomar foto
-            binding.takePictureButton.setOnClickListener {
-                if (respuestaUIState.respuestaId > 0) {
-                    onTakePicture(respuestaUIState.respuestaId)
-                } else {
-                    // Primero necesitamos guardar la respuesta para tener un ID
-                    guardarRespuestaNoConforme(
-                        pregunta.preguntaId,
-                        respuestaUIState.comentarios,
-                        respuestaUIState.tipoAccion,
-                        respuestaUIState.idAvisoOrdenTrabajo
-                    ) { respuestaId ->
-                        if (respuestaId > 0) {
-                            respuestaUIState.respuestaId = respuestaId
-                            onTakePicture(respuestaId)
-                        }
+                    // Notify about changes in answered status
+                    if (wasAnswered != respuestaUIState.respondida) {
+                        notifyItemChanged(adapterPosition)
                     }
                 }
             }
 
-            // Botón para ver fotos
-            binding.viewPicturesButton.setOnClickListener {
-                if (respuestaUIState.respuestaId > 0) {
-                    onViewPictures(respuestaUIState.respuestaId)
-                }
-            }
+            // Set the new TextWatcher
+            binding.commentEditText.addTextChangedListener(commentTextWatcher)
         }
 
         private fun guardarRespuestaConforme(preguntaId: Long) {
@@ -316,41 +250,29 @@ class QuestionAdapter(
                     }
                 } catch (e: Exception) {
                     // Manejar error
+                    Log.e("QuestionAdapter", "Error saving conforme response: ${e.message}")
                 }
             }
         }
 
-        private fun guardarRespuestaNoConforme(
-            preguntaId: Long,
-            comentarios: String,
-            tipoAccion: String,
-            idAvisoOrdenTrabajo: String,
-            onSuccess: ((Long) -> Unit)? = null
-        ) {
-            // Validar campos
-            if (comentarios.isBlank() || tipoAccion.isBlank() || idAvisoOrdenTrabajo.isBlank()) {
-                return
-            }
-
+        private fun guardarRespuestaNoConformeSimplificada(preguntaId: Long, comentarios: String) {
             CoroutineScope(Dispatchers.IO).launch {
                 try {
-                    val respuestaId = respuestaViewModel.guardarRespuestaNoConforme(
+                    val respuestaId = respuestaViewModel.guardarRespuestaNoConformeSimplificada(
                         inspeccionId,
                         preguntaId,
-                        comentarios,
-                        tipoAccion,
-                        idAvisoOrdenTrabajo
+                        comentarios
                     )
 
                     withContext(Dispatchers.Main) {
                         // Actualizar el UI si se obtuvo un ID válido
                         if (respuestaId > 0) {
                             respuestasMap[preguntaId]?.respuestaId = respuestaId
-                            onSuccess?.invoke(respuestaId)
                         }
                     }
                 } catch (e: Exception) {
                     // Manejar error
+                    Log.e("QuestionAdapter", "Error saving no conforme response: ${e.message}")
                 }
             }
         }

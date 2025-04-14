@@ -24,6 +24,8 @@ import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import com.example.roomkspdemo.data.entities.Respuesta
+import com.itextpdf.text.Rectangle
 
 /**
  * Clase utilitaria para generar archivos PDF de las inspecciones.
@@ -242,6 +244,8 @@ class PdfGenerator {
             }
         }
 
+        // Add this method to the PdfGenerator class in PdfGenerator.kt
+
         /**
          * Genera un PDF detallado de una inspección específica.
          *
@@ -257,10 +261,221 @@ class PdfGenerator {
             respuestas: List<RespuestaConDetalles>,
             mostrarSoloNoConformes: Boolean = false
         ): Boolean {
-            // Esta es la función que implementaremos más adelante para
-            // generar reportes detallados de inspecciones individuales
-            // Por ahora retornamos false, indicando que no está implementada
-            return false
+            try {
+                // Crear un archivo temporal para el PDF
+                val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+                val fileName = "Inspeccion_${inspeccion.caex.modelo}_${inspeccion.caex.numeroIdentificador}_$timeStamp.pdf"
+
+                // Usamos el directorio de archivos de la aplicación para evitar problemas de permisos
+                val pdfFile = File(context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS), fileName)
+
+                // Crear documento PDF
+                val document = Document()
+                PdfWriter.getInstance(document, FileOutputStream(pdfFile))
+                document.open()
+
+                // Añadir título
+                val titleFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 18f)
+                val title = Paragraph("Informe de Inspección No Conformes", titleFont)
+                title.alignment = Element.ALIGN_CENTER
+                title.spacingAfter = 15f
+                document.add(title)
+
+                // Añadir información del CAEX e inspección
+                addInspectionInfo(document, inspeccion)
+
+                // Si no hay respuestas, mostrar mensaje
+                if (respuestas.isEmpty()) {
+                    val emptyMessage = Paragraph("No hay respuestas no conformes registradas.")
+                    emptyMessage.alignment = Element.ALIGN_CENTER
+                    document.add(emptyMessage)
+                } else {
+                    // Filtrar respuestas según el parámetro
+                    val respuestasAMostrar = if (mostrarSoloNoConformes) {
+                        respuestas.filter { it.respuesta.estado == Respuesta.ESTADO_NO_CONFORME }
+                    } else {
+                        respuestas
+                    }
+
+                    if (respuestasAMostrar.isEmpty()) {
+                        val emptyMessage = Paragraph("No hay respuestas no conformes registradas.")
+                        emptyMessage.alignment = Element.ALIGN_CENTER
+                        document.add(emptyMessage)
+                    } else {
+                        // Añadir tabla de respuestas no conformes
+                        document.add(Paragraph("\n"))
+                        val subTitle = Paragraph("Detalle de Hallazgos No Conformes", titleFont)
+                        subTitle.alignment = Element.ALIGN_LEFT
+                        subTitle.spacingAfter = 10f
+                        document.add(subTitle)
+
+                        addNoConformeTable(document, respuestasAMostrar)
+                    }
+                }
+
+                // Cerrar el documento
+                document.close()
+
+                // Compartir el PDF generado
+                sharePdf(context, pdfFile)
+
+                return true
+            } catch (e: Exception) {
+                Log.e(TAG, "Error al generar PDF de detalle: ${e.message}", e)
+                return false
+            }
+        }
+
+        /**
+         * Añade la información general de la inspección al documento.
+         */
+        private fun addInspectionInfo(document: Document, inspeccion: InspeccionConCAEX) {
+            val infoFont = FontFactory.getFont(FontFactory.HELVETICA, 12f)
+            val boldFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 12f)
+
+            // Crear tabla para información
+            val infoTable = PdfPTable(2)
+            infoTable.widthPercentage = 100f
+            infoTable.setWidths(floatArrayOf(1f, 2f))
+
+            // Añadir filas de información
+            addInfoRow(infoTable, "CAEX:", "${inspeccion.caex.modelo} #${inspeccion.caex.numeroIdentificador}", boldFont, infoFont)
+
+            val tipoInspeccion = if (inspeccion.inspeccion.tipo == Inspeccion.TIPO_RECEPCION)
+                "Recepción (Control Inicio de Intervención)"
+            else
+                "Entrega (Control Término de Intervención)"
+            addInfoRow(infoTable, "Tipo de Inspección:", tipoInspeccion, boldFont, infoFont)
+
+            addInfoRow(infoTable, "Inspector:", inspeccion.inspeccion.nombreInspector, boldFont, infoFont)
+            addInfoRow(infoTable, "Supervisor:", inspeccion.inspeccion.nombreSupervisor, boldFont, infoFont)
+
+            val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+            val fechaCreacion = dateFormat.format(Date(inspeccion.inspeccion.fechaCreacion))
+            addInfoRow(infoTable, "Fecha:", fechaCreacion, boldFont, infoFont)
+
+            // Añadir tabla al documento
+            document.add(infoTable)
+        }
+
+        /**
+         * Añade una fila a la tabla de información.
+         */
+        private fun addInfoRow(table: PdfPTable, label: String, value: String, labelFont: Font, valueFont: Font) {
+            val labelCell = PdfPCell(Phrase(label, labelFont))
+            labelCell.border = Rectangle.NO_BORDER
+            labelCell.paddingBottom = 5f
+            table.addCell(labelCell)
+
+            val valueCell = PdfPCell(Phrase(value, valueFont))
+            valueCell.border = Rectangle.NO_BORDER
+            valueCell.paddingBottom = 5f
+            table.addCell(valueCell)
+        }
+
+        /**
+         * Añade la tabla de respuestas no conformes al documento.
+         */
+        private fun addNoConformeTable(document: Document, respuestas: List<RespuestaConDetalles>) {
+            val headerFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10f)
+            val contentFont = FontFactory.getFont(FontFactory.HELVETICA, 9f)
+            val titleFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 11f)
+
+            // Agrupar respuestas por categoría para mejor organización
+            val respuestasPorCategoria = respuestas.groupBy { it.pregunta.categoriaId }
+
+            // Para cada categoría
+            respuestasPorCategoria.forEach { (categoriaId, respuestasCategoria) ->
+                // Añadir título de categoría
+                val categoriaNombre = getCategoriaName(categoriaId)
+                val categoriaTitle = Paragraph("Categoría: $categoriaNombre", titleFont)
+                categoriaTitle.spacingBefore = 15f
+                categoriaTitle.spacingAfter = 5f
+                document.add(categoriaTitle)
+
+                // Crear tabla para esta categoría
+                val table = PdfPTable(3)
+                table.widthPercentage = 100f
+                table.setWidths(floatArrayOf(2.5f, 1f, 2f))
+
+                // Añadir encabezados
+                addTableCell(table, "Hallazgo No Conforme", headerFont, BaseColor.LIGHT_GRAY)
+                addTableCell(table, "Tipo Acción", headerFont, BaseColor.LIGHT_GRAY)
+                addTableCell(table, "ID Aviso/OT y Comentarios", headerFont, BaseColor.LIGHT_GRAY)
+
+                // Añadir filas con los datos
+                respuestasCategoria.forEach { respuesta ->
+                    // Columna de pregunta/hallazgo
+                    addTableCell(table, respuesta.pregunta.texto, contentFont)
+
+                    // Columna de tipo de acción
+                    val tipoAccion = when (respuesta.respuesta.tipoAccion) {
+                        Respuesta.ACCION_INMEDIATO -> "Aviso (Inmediato)"
+                        Respuesta.ACCION_PROGRAMADO -> "OT (Programado)"
+                        else -> ""
+                    }
+                    addTableCell(table, tipoAccion, contentFont)
+
+                    // Columna de ID y comentarios
+                    val idYComentarios = "ID: ${respuesta.respuesta.idAvisoOrdenTrabajo ?: ""}\n" +
+                            "Comentarios: ${respuesta.respuesta.comentarios}"
+                    addTableCell(table, idYComentarios, contentFont)
+                }
+
+                document.add(table)
+
+                // Añadir fotos si existen
+                respuestasCategoria.forEach { respuesta ->
+                    if (respuesta.fotos.isNotEmpty()) {
+                        document.add(Paragraph("\n"))
+                        val fotosTitle = Paragraph("Fotos para: ${respuesta.pregunta.texto.take(50)}...", contentFont)
+                        fotosTitle.spacingBefore = 5f
+                        fotosTitle.spacingAfter = 5f
+                        document.add(fotosTitle)
+
+                        // TODO: Implementar añadir fotos al PDF
+                        document.add(Paragraph("Hay ${respuesta.fotos.size} fotos disponibles para este hallazgo.", contentFont))
+                    }
+                }
+            }
+        }
+
+        /**
+         * Añade una celda a la tabla.
+         */
+        private fun addTableCell(table: PdfPTable, text: String, font: Font, backgroundColor: BaseColor? = null) {
+            val cell = PdfPCell(Phrase(text, font))
+            cell.paddingTop = 5f
+            cell.paddingBottom = 5f
+            cell.paddingLeft = 5f
+            cell.paddingRight = 5f
+
+            if (backgroundColor != null) {
+                cell.backgroundColor = backgroundColor
+                cell.horizontalAlignment = Element.ALIGN_CENTER
+            }
+
+            table.addCell(cell)
+        }
+
+        /**
+         * Obtiene el nombre de una categoría por su ID.
+         * TODO: Esta es una función temporal que debería reemplazarse por
+         * una consulta real a la base de datos.
+         */
+        private fun getCategoriaName(categoriaId: Long): String {
+            return when (categoriaId) {
+                1L -> "Condiciones Generales"
+                2L -> "Cabina Operador"
+                3L -> "Sistema de Dirección"
+                4L -> "Sistema de frenos"
+                5L -> "Motor Diesel"
+                6L -> "Suspensiones delanteras"
+                7L -> "Suspensiones traseras"
+                8L -> "Sistema estructural"
+                9L -> "Sistema eléctrico"
+                else -> "Categoría $categoriaId"
+            }
         }
     }
 }

@@ -4,6 +4,8 @@ import com.example.roomkspdemo.data.dao.RespuestaDao
 import com.example.roomkspdemo.data.entities.Respuesta
 import com.example.roomkspdemo.data.relations.RespuestaConDetalles
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 
 /**
  * Repositorio para operaciones relacionadas con las respuestas de inspección.
@@ -114,6 +116,50 @@ class RespuestaRepository(private val respuestaDao: RespuestaDao) {
     }
 
     /**
+     * Guarda una respuesta "No Conforme" simplificada para una pregunta en una inspección.
+     * Solo requiere los comentarios, el resto de detalles se completarán en la pantalla de resumen.
+     *
+     * @param inspeccionId ID de la inspección
+     * @param preguntaId ID de la pregunta
+     * @param comentarios Comentarios explicativos sobre el problema
+     * @return ID de la respuesta creada
+     */
+    suspend fun guardarRespuestaNoConformeSimplificada(
+        inspeccionId: Long,
+        preguntaId: Long,
+        comentarios: String
+    ): Long {
+        // Verificar que los comentarios no estén vacíos
+        if (comentarios.isBlank()) {
+            throw IllegalArgumentException("Los comentarios son obligatorios para una respuesta No Conforme")
+        }
+
+        // Verificar si ya existe una respuesta para esta pregunta en esta inspección
+        val respuestaExistente = respuestaDao.getRespuestaPorInspeccionYPregunta(inspeccionId, preguntaId)
+
+        if (respuestaExistente != null) {
+            // Actualizar la respuesta existente
+            val respuestaActualizada = respuestaExistente.copy(
+                estado = Respuesta.ESTADO_NO_CONFORME,
+                comentarios = comentarios,  // Guardar los comentarios
+                tipoAccion = respuestaExistente.tipoAccion,  // Mantener el valor existente
+                idAvisoOrdenTrabajo = respuestaExistente.idAvisoOrdenTrabajo,  // Mantener el valor existente
+                fechaModificacion = System.currentTimeMillis()
+            )
+            respuestaDao.updateRespuesta(respuestaActualizada)
+            return respuestaExistente.respuestaId
+        } else {
+            // Crear una nueva respuesta
+            val nuevaRespuesta = Respuesta(
+                inspeccionId = inspeccionId,
+                preguntaId = preguntaId,
+                estado = Respuesta.ESTADO_NO_CONFORME,
+                comentarios = comentarios  // Guardar los comentarios
+            )
+            return respuestaDao.insertRespuesta(nuevaRespuesta)
+        }
+    }
+    /**
      * Guarda una respuesta "No Conforme" para una pregunta en una inspección.
      *
      * @param inspeccionId ID de la inspección
@@ -209,7 +255,75 @@ class RespuestaRepository(private val respuestaDao: RespuestaDao) {
     suspend fun countRespuestasByInspeccion(inspeccionId: Long): Int {
         return respuestaDao.countRespuestasByInspeccion(inspeccionId)
     }
+// Add these methods to RespuestaRepository.kt
 
+    /**
+     * Obtiene las respuestas con sus detalles filtradas por estado.
+     *
+     * @param inspeccionId ID de la inspección
+     * @param estado Estado de las respuestas a filtrar (CONFORME o NO_CONFORME)
+     * @return Flow de lista de respuestas con detalles
+     */
+    fun getRespuestasConDetallesByInspeccionYEstado(
+        inspeccionId: Long,
+        estado: String
+    ): Flow<List<RespuestaConDetalles>> {
+        // Use the map operator to transform the Flow results
+        return respuestaDao.getRespuestasConDetallesByInspeccionOrdenadas(inspeccionId)
+            .map { respuestas ->
+                // This filtering happens inside the map transformation
+                respuestas.filter { it.respuesta.estado == estado }
+            }
+    }
+
+    /**
+     * Actualiza una respuesta No Conforme con los detalles completos.
+     *
+     * @param respuestaId ID de la respuesta
+     * @param comentarios Comentarios sobre el problema
+     * @param tipoAccion Tipo de acción (INMEDIATO o PROGRAMADO)
+     * @param idAvisoOrdenTrabajo ID del aviso o la orden de trabajo asociada
+     * @return true si la actualización fue exitosa, false en caso contrario
+     */
+    suspend fun actualizarRespuestaNoConforme(
+        respuestaId: Long,
+        comentarios: String,
+        tipoAccion: String,
+        idAvisoOrdenTrabajo: String
+    ): Boolean {
+        // Validar campos obligatorios
+        if (comentarios.isBlank()) {
+            throw IllegalArgumentException("Los comentarios son obligatorios para una respuesta No Conforme")
+        }
+
+        if (tipoAccion != Respuesta.ACCION_INMEDIATO && tipoAccion != Respuesta.ACCION_PROGRAMADO) {
+            throw IllegalArgumentException("El tipo de acción debe ser INMEDIATO o PROGRAMADO")
+        }
+
+        if (idAvisoOrdenTrabajo.isBlank()) {
+            throw IllegalArgumentException("El ID de aviso u orden de trabajo es obligatorio")
+        }
+
+        // Obtener la respuesta actual
+        val respuestaActual = respuestaDao.getRespuestaById(respuestaId)
+            ?: throw IllegalArgumentException("La respuesta con ID $respuestaId no existe")
+
+        // Verificar que sea una respuesta No Conforme
+        if (respuestaActual.estado != Respuesta.ESTADO_NO_CONFORME) {
+            throw IllegalArgumentException("Solo se pueden actualizar respuestas No Conformes")
+        }
+
+        // Actualizar la respuesta
+        val respuestaActualizada = respuestaActual.copy(
+            comentarios = comentarios,
+            tipoAccion = tipoAccion,
+            idAvisoOrdenTrabajo = idAvisoOrdenTrabajo,
+            fechaModificacion = System.currentTimeMillis()
+        )
+
+        respuestaDao.updateRespuesta(respuestaActualizada)
+        return true
+    }
     /**
      * Cuenta el número de respuestas con un estado específico para una inspección.
      *

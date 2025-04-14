@@ -56,7 +56,49 @@ class RespuestaViewModel(private val repository: RespuestaRepository) : ViewMode
     fun getRespuestasConDetallesByInspeccionOrdenadas(inspeccionId: Long): LiveData<List<RespuestaConDetalles>> {
         return repository.getRespuestasConDetallesByInspeccionOrdenadas(inspeccionId).asLiveData()
     }
+// Add these methods to RespuestaViewModel.kt
 
+    /**
+     * Obtiene las respuestas con sus detalles filtradas por estado.
+     *
+     * @param inspeccionId ID de la inspección
+     * @param estado Estado de las respuestas a filtrar (CONFORME o NO_CONFORME)
+     * @return LiveData con la lista de respuestas con detalles
+     */
+    fun getRespuestasConDetallesByInspeccionYEstado(
+        inspeccionId: Long,
+        estado: String
+    ): LiveData<List<RespuestaConDetalles>> {
+        return repository.getRespuestasConDetallesByInspeccionYEstado(inspeccionId, estado).asLiveData()
+    }
+
+    /**
+     * Actualiza una respuesta No Conforme con los detalles completos.
+     *
+     * @param respuestaId ID de la respuesta
+     * @param comentarios Comentarios sobre el problema
+     * @param tipoAccion Tipo de acción (INMEDIATO o PROGRAMADO)
+     * @param idAvisoOrdenTrabajo ID del aviso o la orden de trabajo asociada
+     * @return true si la actualización fue exitosa, false en caso contrario
+     */
+    suspend fun actualizarRespuestaNoConforme(
+        respuestaId: Long,
+        comentarios: String,
+        tipoAccion: String,
+        idAvisoOrdenTrabajo: String
+    ): Boolean {
+        try {
+            return repository.actualizarRespuestaNoConforme(
+                respuestaId,
+                comentarios,
+                tipoAccion,
+                idAvisoOrdenTrabajo
+            )
+        } catch (e: Exception) {
+            _operationStatus.postValue(OperationStatus.Error(e.message ?: "Error al actualizar respuesta"))
+            return false
+        }
+    }
     /**
      * Obtiene las respuestas con sus detalles para una categoría específica de una inspección.
      *
@@ -230,4 +272,28 @@ class RespuestaViewModel(private val repository: RespuestaRepository) : ViewMode
             throw IllegalArgumentException("Unknown ViewModel class")
         }
     }
+    // Add this method to RespuestaViewModel.kt
+
+    /**
+     * Guarda una respuesta "No Conforme" simplificada para una pregunta en una inspección.
+     * Esta versión no requiere comentarios ni acciones, que se completarán más tarde.
+     *
+     * @param inspeccionId ID de la inspección
+     * @param preguntaId ID de la pregunta
+     * @return ID de la respuesta guardada
+     */
+    suspend fun guardarRespuestaNoConformeSimplificada(
+        inspeccionId: Long,
+        preguntaId: Long,
+        comentarios: String
+    ): Long {
+        try {
+            return repository.guardarRespuestaNoConformeSimplificada(inspeccionId, preguntaId, comentarios)
+        } catch (e: Exception) {
+            _operationStatus.postValue(OperationStatus.Error(e.message ?: "Error al guardar respuesta no conforme"))
+            return 0
+        }
+    }
+
+
 }

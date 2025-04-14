@@ -51,7 +51,11 @@
             android:exported="false"
             android:label="Cuestionario de Inspección"
             android:parentActivityName=".ui.inspection.CreateInspectionActivity" />
-
+        <activity
+            android:name=".ui.inspection.NoConformeSummaryActivity"
+            android:exported="false"
+            android:label="Resumen No Conformes"
+            android:parentActivityName=".ui.inspection.InspectionQuestionnaireActivity" />
         <!-- FileProvider para compartir archivos -->
         <provider
             android:name="androidx.core.content.FileProvider"

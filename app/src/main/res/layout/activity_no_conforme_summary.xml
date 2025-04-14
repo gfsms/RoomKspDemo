@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".ui.inspection.InspectionQuestionnaireActivity">
+    tools:context=".ui.inspection.NoConformeSummaryActivity">
 
     <androidx.appcompat.widget.Toolbar
         android:id="@+id/toolbar"
@@ -17,9 +17,8 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:popupTheme="@style/ThemeOverlay.AppCompat.Light"
-        app:title="Inspección - Control Inicio Intervención" />
+        app:title="Resumen No Conformes" />
 
-    <!-- Información del CAEX y la inspección -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/infoCardView"
         android:layout_width="0dp"
@@ -59,46 +58,69 @@
                 android:textSize="14sp"
                 tools:text="Fecha: 12/04/2025 15:30" />
 
-            <LinearLayout
+            <TextView
+                android:id="@+id/noConformesCountTextView"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:id="@+id/progressTextView"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:textSize="14sp"
-                    android:textStyle="bold"
-                    tools:text="Progreso: 0/45 preguntas" />
-
-                <TextView
-                    android:id="@+id/categoriaActualTextView"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textSize="14sp"
-                    android:textStyle="italic"
-                    tools:text="Categoría: Condiciones Generales" />
-            </LinearLayout>
+                android:textSize="14sp"
+                android:textStyle="bold"
+                tools:text="Total No Conformes: 5" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
-    <!-- ViewPager para navegar entre categorías -->
-    <androidx.viewpager2.widget.ViewPager2
-        android:id="@+id/categoryViewPager"
+    <TextView
+        android:id="@+id/instructionsTextView"
         android:layout_width="0dp"
-        android:layout_height="0dp"
+        android:layout_height="wrap_content"
         android:layout_margin="8dp"
-        app:layout_constraintBottom_toTopOf="@+id/navigationButtons"
+        android:text="Complete los datos para cada item No Conforme:"
+        android:textSize="14sp"
+        android:textStyle="italic"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/infoCardView" />
 
-    <!-- Botones de navegación -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/noConformesRecyclerView"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_margin="8dp"
+        android:clipToPadding="false"
+        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+        app:layout_constraintBottom_toTopOf="@+id/actionButtonsLayout"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/instructionsTextView"
+        tools:listitem="@layout/item_no_conforme_summary" />
+
+    <TextView
+        android:id="@+id/emptyStateTextView"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_margin="16dp"
+        android:gravity="center"
+        android:text="No hay elementos No Conformes en esta inspección"
+        android:textSize="16sp"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@+id/actionButtonsLayout"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/instructionsTextView" />
+
+    <ProgressBar
+        android:id="@+id/loadingProgressBar"
+        style="?android:attr/progressBarStyle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@+id/actionButtonsLayout"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/instructionsTextView" />
+
     <LinearLayout
-        android:id="@+id/navigationButtons"
+        android:id="@+id/actionButtonsLayout"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_margin="8dp"
@@ -108,30 +130,21 @@
         app:layout_constraintStart_toStartOf="parent">
 
         <Button
-            android:id="@+id/prevButton"
+            android:id="@+id/generatePdfButton"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginEnd="4dp"
             android:layout_weight="1"
-            android:text="Anterior" />
+            android:text="Generar PDF" />
 
         <Button
-            android:id="@+id/nextButton"
+            android:id="@+id/finishButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="4dp"
             android:layout_weight="1"
-            android:text="Siguiente" />
+            android:text="Finalizar" />
     </LinearLayout>
-    <ProgressBar
-        android:id="@+id/loadingProgressBar"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
